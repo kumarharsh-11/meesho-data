@@ -1,0 +1,26 @@
+folder = os.path.join(
+                r"D:\Meesho_Data",
+                str(today.year),
+                f"{today.month:02d}",
+                f"{today.day:02d}"
+            )
+
+            os.makedirs(folder, exist_ok= True)
+
+            with open(
+                os.path.join(folder, "orders.csv"),
+                "wb"
+            ) as f:
+                f.write(orders.getbuffer())
+
+            with open(
+                os.path.join(folder, "payment_outstanding.csv"),
+                "wb"
+            ) as f:
+                f.write(payment_outstanding.getbuffer())
+
+            with open(
+                os.path.join(folder, "payment_previous_pay.csv"),
+                "wb"
+            ) as f:
+                f.write(payment_previous_pay.getbuffer())
