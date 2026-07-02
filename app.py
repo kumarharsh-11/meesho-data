@@ -210,13 +210,13 @@ if submit:
             payment_previous_pay_blob = f"{year}/{month}/{day}/payment_previous_pay.csv"
 
             #Upload orders
-            container_client.upload_blob(name= orders_blob, data =orders, overwrite=True)
+            container_client.upload_blob(name= orders_blob, data =orders.getvalue(), overwrite=True)
 
             #Upload payment_outstanding
-            container_client.upload_blob(name= payment_outstanding_blob, data =payment_outstanding, overwrite=True)
+            container_client.upload_blob(name= payment_outstanding_blob, data =payment_outstanding.getvalue(), overwrite=True)
 
             #Upload payment_previous_pay
-            container_client.upload_blob(name= payment_previous_pay_blob, data =payment_previous_pay, overwrite=True)
+            container_client.upload_blob(name= payment_previous_pay_blob, data =payment_previous_pay.getvalue(), overwrite=True)
 
             st.success("✅ All files uploaded successfully to Azure Blob Storage")
 
