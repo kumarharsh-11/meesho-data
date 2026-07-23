@@ -2,6 +2,7 @@ import streamlit as st
 from azure.storage.blob import BlobServiceClient
 import pandas as pd
 from datetime import datetime
+from io import StringIO
 
 st.set_page_config(page_title= "Upload Portal", page_icon= '⬆️', layout = "centered")
 
@@ -46,15 +47,22 @@ def validate_files(df, required_cols, file_name):
 
     return validation_passed
 
+#Read uploaded files
+def read_uploaded_file(uploaded_file):
+    if uploaded_file.name.lower().endswith(".csv"):
+        return pd.read_csv(uploaded_file)
+    else:
+        return pd.read_excel(uploaded_file)
+    
 with st.form("update_form"):
     #Orders CSV
-    orders = st.file_uploader("Upload Order CSV: ", type = 'csv')
+    orders = st.file_uploader("Upload Order CSV: ", type = ["csv", "xlsx", "xls"])
 
     #Payment Outstanding CSV
-    payment_outstanding = st.file_uploader("Upload Payment_Outstanding CSV: ", type = 'csv')
+    payment_outstanding = st.file_uploader("Upload Payment_Outstanding CSV: ", type = ["csv", "xlsx", "xls"])
 
     #Payment Previous Pay CSV
-    payment_previous_pay = st.file_uploader("Upload Payment_Previous_Pay CSV: ", type = 'csv')
+    payment_previous_pay = st.file_uploader("Upload Payment_Previous_Pay CSV: ", type = ["csv", "xlsx", "xls"])
 
     submit = st.form_submit_button("Submit")
 
@@ -75,9 +83,9 @@ if submit:
 
     if file_uploaded:
         #Read Files
-        o_df = pd.read_csv(orders)
-        pot_df = pd.read_csv(payment_outstanding)
-        ppp_df = pd.read_csv(payment_previous_pay)
+        o_df = read_uploaded_file(orders)
+        pot_df = read_uploaded_file(payment_outstanding)
+        ppp_df = read_uploaded_file(payment_previous_pay)
 
 
         #Required columns 
@@ -193,10 +201,7 @@ if submit:
 
             #Save files
             today = datetime.today()
-
-            year = str(today.year)
-            month = f"{today.month:02d}"
-            day = f"{today.day:02d}"
+            date = today.strftime("%Y-%m-%d")
             
             # Connect to Azure Storage
             blob_service_client = BlobServiceClient.from_connection_string(st.secrets["CONNECTION_STRING"])
@@ -205,18 +210,41 @@ if submit:
             container_client = blob_service_client.get_container_client(st.secrets["CONTAINER_NAME"])
 
             #Path
-            orders_blob = f"{year}/{month}/{day}/orders.csv"
-            payment_outstanding_blob = f"{year}/{month}/{day}/payment_outstanding.csv"
-            payment_previous_pay_blob = f"{year}/{month}/{day}/payment_previous_pay.csv"
+            orders_blob = f"orders/{date}-orders.csv"
+            payment_outstanding_blob = f"payment_outstanding/{date}-payment_outstanding.csv"
+            payment_previous_pay_blob = f"payment_previous_pay/{date}-payment_previous_pay.csv"
 
-            #Upload orders
-            container_client.upload_blob(name= orders_blob, data =orders.getvalue(), overwrite=True)
+            # Convert DataFrames to CSV in memory
 
-            #Upload payment_outstanding
-            container_client.upload_blob(name= payment_outstanding_blob, data =payment_outstanding.getvalue(), overwrite=True)
+            orders_buffer = StringIO()
+            o_df.to_csv(orders_buffer, index=False)
 
-            #Upload payment_previous_pay
-            container_client.upload_blob(name= payment_previous_pay_blob, data =payment_previous_pay.getvalue(), overwrite=True)
+            payment_outstanding_buffer = StringIO()
+            pot_df.to_csv(payment_outstanding_buffer, index=False)
+
+            payment_previous_pay_buffer = StringIO()
+            ppp_df.to_csv(payment_previous_pay_buffer, index=False)
+
+            # Upload Orders
+            container_client.upload_blob(
+                name=orders_blob,
+                data=orders_buffer.getvalue(),
+                overwrite=True
+            )
+
+            # Upload Payment Outstanding
+            container_client.upload_blob(
+                name=payment_outstanding_blob,
+                data=payment_outstanding_buffer.getvalue(),
+                overwrite=True
+            )
+
+            # Upload Payment Previous Pay
+            container_client.upload_blob(
+                name=payment_previous_pay_blob,
+                data=payment_previous_pay_buffer.getvalue(),
+                overwrite=True
+            )
 
             st.success("✅ All files uploaded successfully to Azure Blob Storage")
 
